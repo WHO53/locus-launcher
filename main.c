@@ -7,7 +7,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <librsvg/rsvg.h>
-#include <unistd.h>  // For execvp
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -199,7 +199,7 @@ int compare_apps(const void *a, const void *b) {
 void launch_app(const char *exec) {
     pid_t pid = fork();
     if (pid == 0) {
-        char *args[] = {"/bin/sh", "-c", exec, NULL};
+        char *args[] = {"/bin/sh", "-c", (char *)exec, NULL};
         execvp(args[0], args);
         perror("Failed to execute application");
         exit(EXIT_FAILURE);
