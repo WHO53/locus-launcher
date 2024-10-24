@@ -6,56 +6,39 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <librsvg/rsvg.h>
 
 Locus app;
 
-#include <cairo.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
-
-#define NUM_APPS 20
+#define NUM_APPS 40
 #define APPS_PER_ROW 5
 #define APP_ICON_SIZE 100
 #define APP_PADDING 50
 #define APP_TEXT_HEIGHT 20
 
-// Struct to hold app details
 typedef struct {
     char name[1024];
     char icon[1024];
 } App;
 
-// Array to hold the processed apps
 App apps[NUM_APPS];
 int app_count = 0;
 
-// Function to check if a line starts with a specific key
 int starts_with(const char *line, const char *key) {
     return strncmp(line, key, strlen(key)) == 0;
 }
 
-// Function to trim leading and trailing whitespace
 char *trim_whitespace(char *str) {
     char *end;
-
-    // Trim leading space
     while (*str == ' ') str++;
-
-    // Trim trailing space
     end = str + strlen(str) - 1;
     while (end > str && (*end == ' ' || *end == '\n' || *end == '\r')) end--;
-
-    // Write new null terminator
     *(end + 1) = '\0';
-
     return str;
 }
 
-// Function to process a .desktop file and extract Name and Icon
 void process_desktop_file(const char *filepath) {
-    if (app_count >= NUM_APPS) return;  // Stop processing if we have enough apps
+    if (app_count >= NUM_APPS) return;
 
     FILE *file = fopen(filepath, "r");
     if (!file) {
@@ -68,8 +51,8 @@ void process_desktop_file(const char *filepath) {
     char icon_name[1024] = "";
     int no_display = 0;
     int name_found = 0;
+    int icon_found = 0;
 
-    // Read file line by line
     while (fgets(line, sizeof(line), file)) {
         if (starts_with(line, "NoDisplay=") && strstr(line, "true")) {
             no_display = 1;
@@ -79,8 +62,9 @@ void process_desktop_file(const char *filepath) {
             strncpy(app_name, trim_whitespace(line + 5), sizeof(app_name));
             name_found = 1;
         }
-        if (starts_with(line, "Icon=")) {
+        if (!icon_found && starts_with(line, "Icon=")) {
             strncpy(icon_name, trim_whitespace(line + 5), sizeof(icon_name));
+            icon_found = 1;
         }
     }
 
@@ -93,7 +77,6 @@ void process_desktop_file(const char *filepath) {
     }
 }
 
-// Function to read all .desktop files from a directory and process them
 void process_desktop_directory(const char *dirpath) {
     DIR *dir = opendir(dirpath);
     if (!dir) {
@@ -114,24 +97,69 @@ void process_desktop_directory(const char *dirpath) {
     closedir(dir);
 }
 
-// Function to draw an app icon and label using Cairo
-void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const char *icon_path) {
-    cairo_surface_t *icon_surface = cairo_image_surface_create_from_png(icon_path);
+int file_exists(const char *path) {
+    FILE *file = fopen(path, "r");
+    if (file) {
+        fclose(file);
+        return 1;
+    }
+    return 0;
+}
 
-    if (cairo_surface_status(icon_surface) == CAIRO_STATUS_SUCCESS) {
-        // Draw the actual icon
-        cairo_set_source_surface(cr, icon_surface, x, y);
-        cairo_paint(cr);
-    } else {
-        // Fallback: draw a rectangle if the icon can't be loaded
+char *find_icon(const char *icon_name) {
+    static char path[1024];
+    const char *icon_dirs[] = {
+        "/home/droidian/temp/Fluent-grey/scalable/apps/", //temp
+        "/usr/share/icons/hicolor/128x128/apps/",
+        "/usr/share/icons/hicolor/48x48/apps/",
+        "/usr/share/icons/hicolor/32x32/apps/",
+        "/usr/share/pixmaps/",
+        NULL
+    };
+    
+    for (int i = 0; icon_dirs[i] != NULL; ++i) {
+        snprintf(path, sizeof(path), "%s%s.png", icon_dirs[i], icon_name);
+        if (file_exists(path)) return path;
+        snprintf(path, sizeof(path), "%s%s.svg", icon_dirs[i], icon_name);
+        if (file_exists(path)) return path;
+        snprintf(path, sizeof(path), "%s%s-symbolic.svg", icon_dirs[i], icon_name);
+        if (file_exists(path)) return path;
+    }
+
+    return NULL;
+}
+
+void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const char *icon_name) {
+    char *icon_path = find_icon(icon_name);
+    cairo_surface_t *icon_surface = NULL;
+
+    if (icon_path != NULL) {
+        if (strstr(icon_path, ".svg")) {
+            RsvgHandle *svg = rsvg_handle_new_from_file(icon_path, NULL);
+            RsvgRectangle viewport = { 0, 0, APP_ICON_SIZE, APP_ICON_SIZE };
+            if (svg) {
+                cairo_save(cr);
+                cairo_translate(cr, x, y);
+                rsvg_handle_render_document(svg, cr, &viewport, NULL);
+                cairo_restore(cr);
+                g_object_unref(svg);
+            }
+        } else {
+            icon_surface = cairo_image_surface_create_from_png(icon_path);
+            if (cairo_surface_status(icon_surface) == CAIRO_STATUS_SUCCESS) {
+                cairo_set_source_surface(cr, icon_surface, x, y);
+                cairo_paint(cr);
+                cairo_surface_destroy(icon_surface);
+            }
+        }
+    }
+
+    if (!icon_surface && !icon_path) {
         cairo_set_source_rgb(cr, 0.2, 0.6, 0.8);
         cairo_rectangle(cr, x, y, APP_ICON_SIZE, APP_ICON_SIZE);
         cairo_fill(cr);
     }
 
-    cairo_surface_destroy(icon_surface);
-
-    // Draw the app name
     cairo_set_source_rgb(cr, 1, 1, 1);
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 12.0);
@@ -143,7 +171,6 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
     cairo_show_text(cr, name);
 }
 
-// Function to draw the app grid
 void draw(cairo_t *cr, int width, int height) {
     cairo_set_source_rgba(cr, 0.4, 0.4, 0.4, 1);
     cairo_rectangle(cr, 0, 0, width, height);

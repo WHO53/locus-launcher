@@ -2,7 +2,7 @@ NAME=locus-launcher
 BIN=${NAME}
 SRC=.
 
-PKGS = locus
+PKGS = locus librsvg-2.0
 
 LOCUS_LAUNCHER_SOURCES += $(wildcard $(SRC)/*.c) $(wildcard $(SRC)/**/*.c)
 LOCUS_LAUNCHER_HEADERS += $(wildcard $(SRC)/*.h) $(wildcard $(SRC)/**/*.h)
