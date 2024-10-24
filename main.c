@@ -7,7 +7,9 @@
 #include <string.h>
 #include <dirent.h>
 #include <librsvg/rsvg.h>
-#include <stdlib.h>
+#include <unistd.h>  // For execvp
+#include <sys/types.h>
+#include <sys/wait.h>
 
 Locus app;
 
@@ -19,6 +21,7 @@ Locus app;
 typedef struct {
     char name[1024];
     char icon[1024];
+    char exec[1024];
 } App;
 
 App *apps = NULL;
@@ -38,7 +41,7 @@ char *trim_whitespace(char *str) {
     return str;
 }
 
-void add_app(const char *name, const char *icon_name) {
+void add_app(const char *name, const char *icon_name, const char *exec_cmd) {
     if (app_count >= app_capacity) {
         app_capacity *= 2;
         apps = realloc(apps, app_capacity * sizeof(App));
@@ -49,6 +52,7 @@ void add_app(const char *name, const char *icon_name) {
     }
     strncpy(apps[app_count].name, name, sizeof(apps[app_count].name));
     strncpy(apps[app_count].icon, icon_name, sizeof(apps[app_count].icon));
+    strncpy(apps[app_count].exec, exec_cmd, sizeof(apps[app_count].exec));
     app_count++;
 }
 
@@ -62,9 +66,11 @@ void process_desktop_file(const char *filepath) {
     char line[1024];
     char app_name[1024] = "";
     char icon_name[1024] = "";
+    char exec_name[1024] = "";
     int no_display = 0;
     int name_found = 0;
     int icon_found = 0;
+    int exec_found = 0;
 
     while (fgets(line, sizeof(line), file)) {
         if (starts_with(line, "NoDisplay=") && strstr(line, "true")) {
@@ -79,12 +85,16 @@ void process_desktop_file(const char *filepath) {
             strncpy(icon_name, trim_whitespace(line + 5), sizeof(icon_name));
             icon_found = 1;
         }
+        if (!exec_found && starts_with(line, "Exec=")) {
+            strncpy(exec_name, trim_whitespace(line + 5), sizeof(exec_name));
+            exec_found = 1;
+        }
     }
 
     fclose(file);
 
-    if (!no_display && strlen(app_name) > 0 && strlen(icon_name) > 0) {
-        add_app(app_name, icon_name);
+    if (!no_display && strlen(app_name) > 0 && strlen(icon_name) > 0 && strlen(exec_name) > 0) {
+        add_app(app_name, icon_name, exec_name);
     }
 }
 
@@ -186,6 +196,32 @@ int compare_apps(const void *a, const void *b) {
     return strcasecmp(appA->name, appB->name);
 }
 
+void launch_app(const char *exec) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        char *args[] = {"/bin/sh", "-c", exec, NULL};
+        execvp(args[0], args);
+        perror("Failed to execute application");
+        exit(EXIT_FAILURE);
+    } else if (pid < 0) {
+        perror("Failed to fork");
+    } 
+}
+
+void touch(int32_t id, double x, double y, int state) {
+    if (state == 0) {
+        for (int i = 0; i < app_count; ++i) {
+            int app_x = (i % APPS_PER_ROW) * (APP_ICON_SIZE + APP_PADDING) + APP_PADDING;
+            int app_y = (i / APPS_PER_ROW) * (APP_ICON_SIZE + APP_TEXT_HEIGHT + APP_PADDING) + APP_PADDING;
+
+            if (x >= app_x && x <= app_x + APP_ICON_SIZE && y >= app_y && y <= app_y + APP_ICON_SIZE) {
+                launch_app(apps[i].exec);
+                break;
+            }
+        }
+    }
+}
+
 void draw(cairo_t *cr, int width, int height) {
     cairo_set_source_rgba(cr, 0.4, 0.4, 0.4, 1);
     cairo_rectangle(cr, 0, 0, width, height);
@@ -210,6 +246,7 @@ int main() {
     locus_init(&app, 100, 100);
     locus_create_layer_surface(&app, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, 0, 0);
     locus_set_draw_callback(&app, draw);
+    locus_set_touch_callback(&app, touch);
     process_desktop_directory("/usr/share/applications");
     qsort(apps, app_count, sizeof(App), compare_apps);
     locus_run(&app);
