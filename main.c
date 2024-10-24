@@ -10,7 +10,6 @@
 
 Locus app;
 
-#define NUM_APPS 40
 #define APPS_PER_ROW 5
 #define APP_ICON_SIZE 100
 #define APP_PADDING 50
@@ -21,8 +20,9 @@ typedef struct {
     char icon[1024];
 } App;
 
-App apps[NUM_APPS];
+App *apps = NULL;
 int app_count = 0;
+int app_capacity = 10;
 
 int starts_with(const char *line, const char *key) {
     return strncmp(line, key, strlen(key)) == 0;
@@ -37,9 +37,21 @@ char *trim_whitespace(char *str) {
     return str;
 }
 
-void process_desktop_file(const char *filepath) {
-    if (app_count >= NUM_APPS) return;
+void add_app(const char *name, const char *icon_name) {
+    if (app_count >= app_capacity) {
+        app_capacity *= 2;
+        apps = realloc(apps, app_capacity * sizeof(App));
+        if (!apps) {
+            perror("Failed to reallocate memory for apps");
+            exit(EXIT_FAILURE);
+        }
+    }
+    strncpy(apps[app_count].name, name, sizeof(apps[app_count].name));
+    strncpy(apps[app_count].icon, icon_name, sizeof(apps[app_count].icon));
+    app_count++;
+}
 
+void process_desktop_file(const char *filepath) {
     FILE *file = fopen(filepath, "r");
     if (!file) {
         perror("Failed to open file");
@@ -71,9 +83,7 @@ void process_desktop_file(const char *filepath) {
     fclose(file);
 
     if (!no_display && strlen(app_name) > 0 && strlen(icon_name) > 0) {
-        strncpy(apps[app_count].name, app_name, sizeof(apps[app_count].name));
-        strncpy(apps[app_count].icon, icon_name, sizeof(apps[app_count].icon));
-        app_count++;
+        add_app(app_name, icon_name);
     }
 }
 
@@ -87,7 +97,7 @@ void process_desktop_directory(const char *dirpath) {
     struct dirent *entry;
     char filepath[1024];
 
-    while ((entry = readdir(dir)) != NULL && app_count < NUM_APPS) {
+    while ((entry = readdir(dir)) != NULL) {
         if (strstr(entry->d_name, ".desktop")) {
             snprintf(filepath, sizeof(filepath), "%s/%s", dirpath, entry->d_name);
             process_desktop_file(filepath);
@@ -109,7 +119,7 @@ int file_exists(const char *path) {
 char *find_icon(const char *icon_name) {
     static char path[1024];
     const char *icon_dirs[] = {
-        "/home/droidian/temp/Fluent-grey/scalable/apps/", //temp
+        "/home/droidian/temp/Fluent-grey/scalable/apps/", // temp
         "/usr/share/icons/hicolor/128x128/apps/",
         "/usr/share/icons/hicolor/48x48/apps/",
         "/usr/share/icons/hicolor/32x32/apps/",
@@ -186,10 +196,18 @@ void draw(cairo_t *cr, int width, int height) {
 }
 
 int main() {
+    apps = malloc(app_capacity * sizeof(App));
+    if (!apps) {
+        perror("Failed to allocate memory for apps");
+        return EXIT_FAILURE;
+    }
+
     locus_init(&app, 100, 100);
     locus_create_layer_surface(&app, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, 0, 0);
     locus_set_draw_callback(&app, draw);
     process_desktop_directory("/usr/share/applications");
     locus_run(&app);
+
+    free(apps);
     return 0;
 }
