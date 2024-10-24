@@ -22,6 +22,9 @@ $(OBJECTS): $(LOCUS_LAUNCHER_HEADERS)
 $(BIN):$(OBJECTS)
 	$(CC) -o $(BIN) $(OBJECTS) $(LDFLAGS)
 
+install: ${BIN}
+	install -m 755 $(BIN) /usr/bin/
+
 clean:
 	rm -f $(OBJECTS) ${BIN}
 

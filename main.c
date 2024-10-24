@@ -135,6 +135,7 @@ char *find_icon(const char *icon_name) {
     static char path[1024];
     const char *icon_dirs[] = {
         "/home/droidian/temp/Fluent-grey/scalable/apps/", // temp
+        "/home/droidian/temp/candy-icons/apps/scalable/", // for fish
         "/usr/share/icons/hicolor/scalable/apps/",
         "/usr/share/pixmaps/",
         NULL
