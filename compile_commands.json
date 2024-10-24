@@ -1,0 +1,23 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-std=gnu99",
+      "-Wall",
+      "-g",
+      "-Wno-format-truncation",
+      "-I/usr/include/locus",
+      "-I/usr/include/cairo",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/freetype2",
+      "-I/usr/include/pixman-1",
+      "-c",
+      "-o",
+      "main.o",
+      "main.c"
+    ],
+    "directory": "/home/droidian/temp/locus-launcher",
+    "file": "/home/droidian/temp/locus-launcher/main.c",
+    "output": "/home/droidian/temp/locus-launcher/main.o"
+  }
+]
