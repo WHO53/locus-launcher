@@ -7,6 +7,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <librsvg/rsvg.h>
+#include <stdlib.h>
 
 Locus app;
 
@@ -120,9 +121,7 @@ char *find_icon(const char *icon_name) {
     static char path[1024];
     const char *icon_dirs[] = {
         "/home/droidian/temp/Fluent-grey/scalable/apps/", // temp
-        "/usr/share/icons/hicolor/128x128/apps/",
-        "/usr/share/icons/hicolor/48x48/apps/",
-        "/usr/share/icons/hicolor/32x32/apps/",
+        "/usr/share/icons/hicolor/scalable/apps/",
         "/usr/share/pixmaps/",
         NULL
     };
@@ -181,6 +180,12 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
     cairo_show_text(cr, name);
 }
 
+int compare_apps(const void *a, const void *b) {
+    const App *appA = (const App *)a;
+    const App *appB = (const App *)b;
+    return strcasecmp(appA->name, appB->name);
+}
+
 void draw(cairo_t *cr, int width, int height) {
     cairo_set_source_rgba(cr, 0.4, 0.4, 0.4, 1);
     cairo_rectangle(cr, 0, 0, width, height);
@@ -206,6 +211,7 @@ int main() {
     locus_create_layer_surface(&app, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, 0, 0);
     locus_set_draw_callback(&app, draw);
     process_desktop_directory("/usr/share/applications");
+    qsort(apps, app_count, sizeof(App), compare_apps);
     locus_run(&app);
 
     free(apps);
