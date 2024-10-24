@@ -1,4 +1,3 @@
-
 #include <locus.h>
 #include <cairo.h>
 #include "main.h"
@@ -27,6 +26,7 @@ typedef struct {
 App *apps = NULL;
 int app_count = 0;
 int app_capacity = 10;
+int adjusted = 0;
 
 int starts_with(const char *line, const char *key) {
     return strncmp(line, key, strlen(key)) == 0;
@@ -232,7 +232,32 @@ void touch(int32_t id, double x, double y, int state) {
     }
 }
 
+void adjust_icon_size_and_padding() {
+    int available_rows = app.height / (APP_ICON_SIZE + APP_TEXT_HEIGHT + APP_PADDING);
+    int available_cols = APPS_PER_ROW;
+    int max_apps = available_rows * available_cols;
+
+    if (app_count > max_apps) {
+        double row_scaling_factor = (double)(app.height / (APP_ICON_SIZE + APP_TEXT_HEIGHT + APP_PADDING)) / (double)(app_count / available_cols);
+        double col_scaling_factor = (double)(app.width / (APP_ICON_SIZE + APP_PADDING)) / (double)available_cols;
+
+        double scale_factor = (row_scaling_factor < col_scaling_factor) ? row_scaling_factor : col_scaling_factor;
+
+        int new_icon_size = (int)(APP_ICON_SIZE * scale_factor);
+        int new_padding = (int)(APP_PADDING * scale_factor);
+
+        if (new_icon_size < APP_ICON_SIZE || new_padding < APP_PADDING) {
+            app.width = (app.width / (new_icon_size + new_padding)) * (new_icon_size + new_padding);
+            app.height = (app.height / (new_icon_size + APP_TEXT_HEIGHT + new_padding)) * (new_icon_size + new_padding);
+        }
+    }
+}
+
 void draw(cairo_t *cr, int width, int height) {
+    if (!adjusted) {
+        adjust_icon_size_and_padding();
+        adjusted = 1;
+    }
     const char *home_dir = getenv("HOME");
     char path[512];
     snprintf(path, sizeof(path), "%s/.config/locus/wallpaper.png", home_dir);
