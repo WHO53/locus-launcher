@@ -228,9 +228,34 @@ void touch(int32_t id, double x, double y, int state) {
 }
 
 void draw(cairo_t *cr, int width, int height) {
-    cairo_set_source_rgba(cr, 0.4, 0.4, 0.4, 1);
-    cairo_rectangle(cr, 0, 0, width, height);
-    cairo_fill(cr);
+    const char *home_dir = getenv("HOME");
+    char path[512];
+    snprintf(path, sizeof(path), "%s/.config/locus/wallpaper.png", home_dir);
+    
+    cairo_surface_t *image = cairo_image_surface_create_from_png(path);
+
+    if (cairo_surface_status(image) == CAIRO_STATUS_SUCCESS) {
+        int img_width = cairo_image_surface_get_width(image);
+        int img_height = cairo_image_surface_get_height(image);
+
+        double scale_x = (double)width / img_width;
+        double scale_y = (double)height / img_height;
+        double scale = (scale_x > scale_y) ? scale_x : scale_y;
+
+        cairo_save(cr);
+        cairo_scale(cr, scale, scale);
+        cairo_translate(cr, (width / 2.0 / scale) - (img_width / 2.0), 
+                             (height / 2.0 / scale) - (img_height / 2.0));
+        cairo_set_source_surface(cr, image, 0, 0);
+        cairo_rectangle(cr, 0, 0, img_width, img_height);
+        cairo_fill(cr);
+        cairo_restore(cr);
+    } else {
+        cairo_set_source_rgba(cr, 0.4, 0.4, 0.4, 1);
+        cairo_rectangle(cr, 0, 0, width, height);
+        cairo_fill(cr);
+    }
+    cairo_surface_destroy(image);
 
     int x, y;
     for (int i = 0; i < app_count; ++i) {
