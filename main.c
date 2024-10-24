@@ -13,10 +13,10 @@
 
 Locus app;
 
-#define APPS_PER_ROW 5
-#define APP_ICON_SIZE 100
-#define APP_PADDING 50
-#define APP_TEXT_HEIGHT 20
+#define APP_ICON_SIZE ((int)(app.width * 0.125))
+#define APP_PADDING ((int)(app.width * 0.0625))
+#define APP_TEXT_HEIGHT ((int)(app.height * 0.012))
+#define APPS_PER_ROW (app.width / (APP_ICON_SIZE + APP_PADDING))
 
 typedef struct {
     char name[1024];
@@ -87,6 +87,10 @@ void process_desktop_file(const char *filepath) {
         }
         if (!exec_found && starts_with(line, "Exec=")) {
             strncpy(exec_name, trim_whitespace(line + 5), sizeof(exec_name));
+            char *percent_u = strstr(exec_name, "%U");
+            if (percent_u) {
+                *percent_u = '\0';
+            }
             exec_found = 1;
         }
     }
@@ -181,7 +185,7 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
 
     cairo_set_source_rgb(cr, 1, 1, 1);
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 12.0);
+    cairo_set_font_size(cr, APP_TEXT_HEIGHT);
 
     cairo_text_extents_t extents;
     cairo_text_extents(cr, name, &extents);
