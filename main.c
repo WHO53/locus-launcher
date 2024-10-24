@@ -1,4 +1,4 @@
-#include "proto/wlr-layer-shell-unstable-v1-client-protocol.h"
+
 #include <locus.h>
 #include <cairo.h>
 #include "main.h"
@@ -135,7 +135,6 @@ char *find_icon(const char *icon_name) {
     static char path[1024];
     const char *icon_dirs[] = {
         "/home/droidian/temp/Fluent-grey/scalable/apps/", // temp
-        "/home/droidian/temp/candy-icons/apps/scalable/", // for fish
         "/usr/share/icons/hicolor/scalable/apps/",
         "/usr/share/pixmaps/",
         NULL
@@ -170,11 +169,17 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
             }
         } else {
             icon_surface = cairo_image_surface_create_from_png(icon_path);
-            if (cairo_surface_status(icon_surface) == CAIRO_STATUS_SUCCESS) {
-                cairo_set_source_surface(cr, icon_surface, x, y);
+                if (cairo_surface_status(icon_surface) == CAIRO_STATUS_SUCCESS) {
+                double icon_width = cairo_image_surface_get_width(icon_surface);
+                double icon_height = cairo_image_surface_get_height(icon_surface);
+                cairo_save(cr);  // Save current context
+                cairo_translate(cr, x, y);  // Position at x, y
+                cairo_scale(cr, (double)APP_ICON_SIZE / icon_width, (double)APP_ICON_SIZE / icon_height);
+                cairo_set_source_surface(cr, icon_surface, 0, 0);
                 cairo_paint(cr);
+                cairo_restore(cr);  // Restore context after scaling
                 cairo_surface_destroy(icon_surface);
-            }
+                }
         }
     }
 
