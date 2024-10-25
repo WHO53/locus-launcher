@@ -231,19 +231,6 @@ void launch_app(const char *exec) {
     } 
 }
 
-void touch(int32_t id, double x, double y, int state) {
-    if (state == 0) {
-        for (int i = 0; i < app_count; ++i) {
-            int app_x = (i % APPS_PER_ROW) * (APP_ICON_SIZE + APP_PADDING) + APP_PADDING;
-            int app_y = (i / APPS_PER_ROW) * (APP_ICON_SIZE + APP_TEXT_HEIGHT + APP_PADDING) + APP_PADDING;
-
-            if (x >= app_x && x <= app_x + APP_ICON_SIZE && y >= app_y && y <= app_y + APP_ICON_SIZE) {
-                launch_app(apps[i].exec);
-                break;
-            }
-        }
-    }
-}
 
 int calculate_apps_per_row(int icon_size, int padding) {
     return app.width / (icon_size + padding);
@@ -251,6 +238,24 @@ int calculate_apps_per_row(int icon_size, int padding) {
 
 int calculate_total_rows(int apps_per_row) {
     return (app_count + apps_per_row - 1) / apps_per_row;
+}
+
+void touch(int32_t id, double x, double y, int state) {
+    if (state == 0) {
+        int apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
+        int total_width_used = apps_per_row * (app_icon_size + app_padding) - app_padding;
+        int extra_padding = (app.width - total_width_used) / 2;
+
+        for (int i = 0; i < app_count; ++i) {
+            int app_x = (i % apps_per_row) * (app_icon_size + app_padding) + extra_padding;
+            int app_y = (i / apps_per_row) * (app_icon_size + APP_TEXT_HEIGHT + app_padding) + app_padding;
+
+            if (x >= app_x && x <= app_x + app_icon_size && y >= app_y && y <= app_y + app_icon_size) {
+                launch_app(apps[i].exec);
+                break;
+            }
+        }
+    }
 }
 
 void adjust_icon_size_and_padding() {
