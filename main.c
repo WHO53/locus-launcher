@@ -12,10 +12,7 @@
 
 Locus app;
 
-#define APP_ICON_SIZE ((int)(app.width * 0.125))
-#define APP_PADDING ((int)(app.width * 0.0625))
-#define APP_TEXT_HEIGHT ((int)(app.height * 0.012))
-#define APPS_PER_ROW (app.width / (APP_ICON_SIZE + APP_PADDING))
+#define APP_TEXT_HEIGHT ((int)(app.height * 0.013))
 
 typedef struct {
     char name[1024];
@@ -172,7 +169,7 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
     if (icon_path != NULL) {
         if (strstr(icon_path, ".svg")) {
             RsvgHandle *svg = rsvg_handle_new_from_file(icon_path, NULL);
-            RsvgRectangle viewport = { 0, 0, APP_ICON_SIZE, APP_ICON_SIZE };
+            RsvgRectangle viewport = { 0, 0, app_icon_size, app_icon_size };
             if (svg) {
                 cairo_save(cr);
                 cairo_translate(cr, x, y);
@@ -187,7 +184,7 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
                 double icon_height = cairo_image_surface_get_height(icon_surface);
                 cairo_save(cr);
                 cairo_translate(cr, x, y);
-                cairo_scale(cr, (double)APP_ICON_SIZE / icon_width, (double)APP_ICON_SIZE / icon_height);
+                cairo_scale(cr, (double)app_icon_size / icon_width, (double)app_icon_size / icon_height);
                 cairo_set_source_surface(cr, icon_surface, 0, 0);
                 cairo_paint(cr);
                 cairo_restore(cr);
@@ -198,7 +195,7 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
 
     if (!icon_surface && !icon_path) {
         cairo_set_source_rgb(cr, 0.2, 0.6, 0.8);
-        cairo_rectangle(cr, x, y, APP_ICON_SIZE, APP_ICON_SIZE);
+        cairo_rectangle(cr, x, y, app_icon_size, app_icon_size);
         cairo_fill(cr);
     }
 
@@ -209,7 +206,7 @@ void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const cha
     cairo_text_extents_t extents;
     cairo_text_extents(cr, name, &extents);
 
-    cairo_move_to(cr, x + (APP_ICON_SIZE - extents.width) / 2, y + APP_ICON_SIZE + APP_TEXT_HEIGHT);
+    cairo_move_to(cr, x + (app_icon_size - extents.width) / 2, y + app_icon_size + APP_TEXT_HEIGHT);
     cairo_show_text(cr, name);
 }
 
@@ -259,8 +256,8 @@ void touch(int32_t id, double x, double y, int state) {
 }
 
 void adjust_icon_size_and_padding() {
-    app_icon_size = (int)(app.width * 0.125);
-    app_padding = (int)(app.width * 0.0625);
+    app_icon_size = (int)(app.width * 0.150);
+    app_padding = (int)(app.width * 0.0620);
     
     int apps_per_row = app.width / (app_icon_size + app_padding);
     int total_rows = (app_count + apps_per_row - 1) / apps_per_row; 
