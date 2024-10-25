@@ -1,4 +1,3 @@
-
 #include <locus.h>
 #include <cairo.h>
 #include "main.h"
@@ -293,10 +292,15 @@ void draw(cairo_t *cr, int width, int height) {
     }
     cairo_surface_destroy(image);
 
+    int apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
+    int total_width_used = apps_per_row * (app_icon_size + app_padding) - app_padding;
+
+    int extra_padding = (app.width - total_width_used) / 2;
+
     int x, y;
     for (int i = 0; i < app_count; ++i) {
-        x = (i % calculate_apps_per_row(app_icon_size, app_padding)) * (app_icon_size + app_padding) ;
-        y = (i / calculate_apps_per_row(app_icon_size, app_padding)) * (app_icon_size + APP_TEXT_HEIGHT + app_padding) + app_padding;
+        x = (i % apps_per_row) * (app_icon_size + app_padding) + extra_padding;
+        y = (i / apps_per_row) * (app_icon_size + APP_TEXT_HEIGHT + app_padding) + app_padding;
 
         draw_icon_with_label(cr, x, y, apps[i].name, apps[i].icon);
     }
