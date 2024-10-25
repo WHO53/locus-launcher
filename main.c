@@ -103,24 +103,35 @@ void process_desktop_file(const char *filepath) {
     }
 }
 
-void process_desktop_directory(const char *dirpath) {
-    DIR *dir = opendir(dirpath);
-    if (!dir) {
-        perror("Failed to open directory");
-        return;
-    }
+void process_desktop_directory() {
+    const char *homeDir = getenv("HOME");
+    char userDir[512];
+    snprintf(userDir, sizeof(userDir), "%s/.local/share/applications", homeDir);
+    const char *dirs[] = {
+        "/usr/share/applications",
+        userDir
+    };
 
-    struct dirent *entry;
     char filepath[1024];
+    DIR *dir;
+    struct dirent *entry;
 
-    while ((entry = readdir(dir)) != NULL) {
-        if (strstr(entry->d_name, ".desktop")) {
-            snprintf(filepath, sizeof(filepath), "%s/%s", dirpath, entry->d_name);
-            process_desktop_file(filepath);
+    for (int i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
+        dir = opendir(dirs[i]);
+        if (!dir) {
+            perror("Failed to open directory");
+            continue;
         }
-    }
 
-    closedir(dir);
+        while ((entry = readdir(dir)) != NULL) {
+            if (strstr(entry->d_name, ".desktop")) {
+                snprintf(filepath, sizeof(filepath), "%s/%s", dirs[i], entry->d_name);
+                process_desktop_file(filepath);
+            }
+        }
+
+        closedir(dir);
+    }
 }
 
 int file_exists(const char *path) {
@@ -137,6 +148,7 @@ char *find_icon(const char *icon_name) {
     const char *icon_dirs[] = {
         "/home/droidian/temp/Fluent-grey/scalable/apps/", // temp
         "/usr/share/icons/hicolor/scalable/apps/",
+        "/usr/share/icons/hicolor/128x128/apps/",
         "/usr/share/pixmaps/",
         NULL
     };
@@ -317,7 +329,7 @@ int main() {
     locus_create_layer_surface(&app, "locus-launcher", ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, 0, 0);
     locus_set_draw_callback(&app, draw);
     locus_set_touch_callback(&app, touch);
-    process_desktop_directory("/usr/share/applications");
+    process_desktop_directory();
     qsort(apps, app_count, sizeof(App), compare_apps);
     locus_run(&app);
 
