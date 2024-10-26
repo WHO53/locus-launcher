@@ -218,17 +218,35 @@ int compare_apps(const void *a, const void *b) {
 
 void launch_app(const char *exec) {
     pid_t pid = fork();
+    if (pid < 0) {
+        perror("Failed to fork");
+        return;
+    }
+
     if (pid == 0) {
-        char *args[] = {"/bin/sh", "-c", (char *)exec, NULL};
+        char *args[512];
+        char *token;
+        int i = 0;
+
+        char *exec_copy = strdup(exec);
+        if (exec_copy == NULL) {
+            perror("Failed to allocate memory");
+            exit(EXIT_FAILURE);
+        }
+
+        token = strtok(exec_copy, " ");
+        while (token != NULL && i < 255) {
+            args[i++] = token;
+            token = strtok(NULL, " ");
+        }
+        args[i] = NULL;
+
         execvp(args[0], args);
         perror("Failed to execute application");
+        free(exec_copy);
         exit(EXIT_FAILURE);
-    } else if (pid < 0) {
-        perror("Failed to fork");
-    } 
+    }
 }
-
-
 int calculate_apps_per_row(int icon_size, int padding) {
     return app.width / (icon_size + padding);
 }
