@@ -25,6 +25,9 @@ $(BIN):$(OBJECTS)
 install: ${BIN}
 	install -m 755 $(BIN) /usr/bin/
 
+uninstall: $(BIN)
+	rm -rf /usr/bin/$(BIN)
+
 clean:
 	rm -f $(OBJECTS) ${BIN}
 
