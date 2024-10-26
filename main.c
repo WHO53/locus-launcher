@@ -10,9 +10,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-Locus app;
+Locus launcher;
 
-#define APP_TEXT_HEIGHT ((int)(app.height * 0.013))
+#define APP_TEXT_HEIGHT ((int)(launcher.height * 0.013))
 
 typedef struct {
     char name[1024];
@@ -248,7 +248,7 @@ void launch_app(const char *exec) {
     }
 }
 int calculate_apps_per_row(int icon_size, int padding) {
-    return app.width / (icon_size + padding);
+    return launcher.width / (icon_size + padding);
 }
 
 int calculate_total_rows(int apps_per_row) {
@@ -259,7 +259,7 @@ void touch(int32_t id, double x, double y, int state) {
     if (state == 0) {
         int apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
         int total_width_used = apps_per_row * (app_icon_size + app_padding) - app_padding;
-        int extra_padding = (app.width - total_width_used) / 2;
+        int extra_padding = (launcher.width - total_width_used) / 2;
 
         for (int i = 0; i < app_count; ++i) {
             int app_x = (i % apps_per_row) * (app_icon_size + app_padding) + extra_padding;
@@ -274,13 +274,13 @@ void touch(int32_t id, double x, double y, int state) {
 }
 
 void adjust_icon_size_and_padding() {
-    app_icon_size = (int)(app.width * 0.150);
-    app_padding = (int)(app.width * 0.0620);
+    app_icon_size = (int)(launcher.width * 0.150);
+    app_padding = (int)(launcher.width * 0.0620);
     
-    int apps_per_row = app.width / (app_icon_size + app_padding);
+    int apps_per_row = launcher.width / (app_icon_size + app_padding);
     int total_rows = (app_count + apps_per_row - 1) / apps_per_row; 
     
-    while ((total_rows * (app_icon_size + APP_TEXT_HEIGHT + app_padding) + app_padding) > app.height) {
+    while ((total_rows * (app_icon_size + APP_TEXT_HEIGHT + app_padding) + app_padding) > launcher.height) {
         app_icon_size *= 0.9;
         app_padding *= 0.9;
         apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
@@ -327,7 +327,7 @@ void draw(cairo_t *cr, int width, int height) {
     int apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
     int total_width_used = apps_per_row * (app_icon_size + app_padding) - app_padding;
 
-    int extra_padding = (app.width - total_width_used) / 2;
+    int extra_padding = (launcher.width - total_width_used) / 2;
 
     int x, y;
     for (int i = 0; i < app_count; ++i) {
@@ -345,13 +345,13 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    locus_init(&app, 100, 100);
-    locus_create_layer_surface(&app, "locus-launcher", ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, 0, 0);
-    locus_set_draw_callback(&app, draw);
-    locus_set_touch_callback(&app, touch);
+    locus_init(&launcher, 100, 100);
+    locus_create_layer_surface(&launcher, "locus-launcher", ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, 0, 0);
+    locus_set_draw_callback(&launcher, draw);
+    locus_set_touch_callback(&launcher, touch);
     process_desktop_directory();
     qsort(apps, app_count, sizeof(App), compare_apps);
-    locus_run(&app);
+    locus_run(&launcher);
 
     free(apps);
     return 0;

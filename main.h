@@ -3,6 +3,6 @@
 
 #include <locus.h>
 
-extern Locus app;
+extern Locus launcher;
 
 #endif // MAIN_H
