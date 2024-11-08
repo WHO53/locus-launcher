@@ -14,7 +14,7 @@
 Locus launcher;
 LocusUI ui;
 
-#define APP_TEXT_HEIGHT ((int)(launcher.height * 0.013))
+#define APP_TEXT_HEIGHT ((int)(launcher.height * 0.018))
 
 typedef struct {
     char name[1024];
@@ -135,7 +135,23 @@ void process_desktop_directory() {
 
 void draw_icon_with_label(int x, int y, const char *name, const char *icon_name) {
     locus_icon(&ui, icon_name, x, y, app_icon_size);
-    locus_text(&ui, name, x + (app_icon_size), y + app_icon_size + APP_TEXT_HEIGHT, APP_TEXT_HEIGHT, 255, 255, 255, 1);
+
+    char display_name[14]; 
+    if (strlen(name) > 11) {
+        strncpy(display_name, name, 11);
+        display_name[11] = '.'; 
+        display_name[12] = '.'; 
+        display_name[13] = '\0'; 
+    } else {
+        strncpy(display_name, name, sizeof(display_name));
+    }
+    
+    float textBounds[4];  
+    nvgTextBounds(ui.vg, x, y, display_name, NULL, textBounds);
+    float textWidth = textBounds[2] - textBounds[0];
+    float textX = x - (textWidth / 2) + (app_icon_size * 0.50);
+
+    locus_text(&ui, display_name, textX, y + app_icon_size + APP_TEXT_HEIGHT, APP_TEXT_HEIGHT, 255, 255, 255, 1);
 }
 
 int compare_apps(const void *a, const void *b) {
