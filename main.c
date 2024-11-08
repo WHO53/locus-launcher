@@ -1,6 +1,7 @@
 #include <locus.h>
-#include <cairo.h>
+#include <locus-ui.h>
 #include "main.h"
+#include <nanovg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 #include <sys/wait.h>
 
 Locus launcher;
+LocusUI ui;
 
 #define APP_TEXT_HEIGHT ((int)(launcher.height * 0.013))
 
@@ -131,83 +133,9 @@ void process_desktop_directory() {
     }
 }
 
-int file_exists(const char *path) {
-    FILE *file = fopen(path, "r");
-    if (file) {
-        fclose(file);
-        return 1;
-    }
-    return 0;
-}
-
-char *find_icon(const char *icon_name) {
-    static char path[1024];
-    const char *icon_dirs[] = {
-        "/home/droidian/temp/Fluent-grey/scalable/apps/", // temp
-        "/usr/share/icons/hicolor/scalable/apps/",
-        "/usr/share/icons/hicolor/128x128/apps/",
-        "/usr/share/pixmaps/",
-        NULL
-    };
-    
-    for (int i = 0; icon_dirs[i] != NULL; ++i) {
-        snprintf(path, sizeof(path), "%s%s.png", icon_dirs[i], icon_name);
-        if (file_exists(path)) return path;
-        snprintf(path, sizeof(path), "%s%s.svg", icon_dirs[i], icon_name);
-        if (file_exists(path)) return path;
-        snprintf(path, sizeof(path), "%s%s-symbolic.svg", icon_dirs[i], icon_name);
-        if (file_exists(path)) return path;
-    }
-
-    return NULL;
-}
-
-void draw_icon_with_label(cairo_t *cr, int x, int y, const char *name, const char *icon_name) {
-    char *icon_path = find_icon(icon_name);
-    cairo_surface_t *icon_surface = NULL;
-
-    if (icon_path != NULL) {
-        if (strstr(icon_path, ".svg")) {
-            RsvgHandle *svg = rsvg_handle_new_from_file(icon_path, NULL);
-            RsvgRectangle viewport = { 0, 0, app_icon_size, app_icon_size };
-            if (svg) {
-                cairo_save(cr);
-                cairo_translate(cr, x, y);
-                rsvg_handle_render_document(svg, cr, &viewport, NULL);
-                cairo_restore(cr);
-                g_object_unref(svg);
-            }
-        } else {
-            icon_surface = cairo_image_surface_create_from_png(icon_path);
-                if (cairo_surface_status(icon_surface) == CAIRO_STATUS_SUCCESS) {
-                double icon_width = cairo_image_surface_get_width(icon_surface);
-                double icon_height = cairo_image_surface_get_height(icon_surface);
-                cairo_save(cr);
-                cairo_translate(cr, x, y);
-                cairo_scale(cr, (double)app_icon_size / icon_width, (double)app_icon_size / icon_height);
-                cairo_set_source_surface(cr, icon_surface, 0, 0);
-                cairo_paint(cr);
-                cairo_restore(cr);
-                cairo_surface_destroy(icon_surface);
-                }
-        }
-    }
-
-    if (!icon_surface && !icon_path) {
-        cairo_set_source_rgb(cr, 0.2, 0.6, 0.8);
-        cairo_rectangle(cr, x, y, app_icon_size, app_icon_size);
-        cairo_fill(cr);
-    }
-
-    cairo_set_source_rgb(cr, 1, 1, 1);
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, APP_TEXT_HEIGHT);
-
-    cairo_text_extents_t extents;
-    cairo_text_extents(cr, name, &extents);
-
-    cairo_move_to(cr, x + (app_icon_size - extents.width) / 2, y + app_icon_size + APP_TEXT_HEIGHT);
-    cairo_show_text(cr, name);
+void draw_icon_with_label(int x, int y, const char *name, const char *icon_name) {
+    locus_icon(&ui, icon_name, x, y, app_icon_size);
+    locus_text(&ui, name, x + (app_icon_size), y + app_icon_size + APP_TEXT_HEIGHT, APP_TEXT_HEIGHT, 255, 255, 255, 1);
 }
 
 int compare_apps(const void *a, const void *b) {
@@ -255,7 +183,7 @@ int calculate_total_rows(int apps_per_row) {
     return (app_count + apps_per_row - 1) / apps_per_row;
 }
 
-void touch(int32_t id, double x, double y, int state) {
+void touch(int32_t id, double x, double y, int32_t state) {
     if (state == 0) {
         int apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
         int total_width_used = apps_per_row * (app_icon_size + app_padding) - app_padding;
@@ -292,37 +220,15 @@ void adjust_icon_size_and_padding() {
     }
 }
 
-void draw(cairo_t *cr, int width, int height) {
+void draw( void *data) {
+    nvgBeginFrame(ui.vg, launcher.width, launcher.height, 1.0f);
     adjust_icon_size_and_padding();
 
     const char *home_dir = getenv("HOME");
     char path[512];
     snprintf(path, sizeof(path), "%s/.config/locus/wallpaper.png", home_dir);
     
-    cairo_surface_t *image = cairo_image_surface_create_from_png(path);
-
-    if (cairo_surface_status(image) == CAIRO_STATUS_SUCCESS) {
-        int img_width = cairo_image_surface_get_width(image);
-        int img_height = cairo_image_surface_get_height(image);
-
-        double scale_x = (double)width / img_width;
-        double scale_y = (double)height / img_height;
-        double scale = (scale_x > scale_y) ? scale_x : scale_y;
-
-        cairo_save(cr);
-        cairo_scale(cr, scale, scale);
-        cairo_translate(cr, (width / 2.0 / scale) - (img_width / 2.0), 
-                             (height / 2.0 / scale) - (img_height / 2.0));
-        cairo_set_source_surface(cr, image, 0, 0);
-        cairo_rectangle(cr, 0, 0, img_width, img_height);
-        cairo_fill(cr);
-        cairo_restore(cr);
-    } else {
-        cairo_set_source_rgba(cr, 0.4, 0.4, 0.4, 1);
-        cairo_rectangle(cr, 0, 0, width, height);
-        cairo_fill(cr);
-    }
-    cairo_surface_destroy(image);
+    locus_image(&ui, path, 0, 0, launcher.width, launcher.height);
 
     int apps_per_row = calculate_apps_per_row(app_icon_size, app_padding);
     int total_width_used = apps_per_row * (app_icon_size + app_padding) - app_padding;
@@ -334,8 +240,9 @@ void draw(cairo_t *cr, int width, int height) {
         x = (i % apps_per_row) * (app_icon_size + app_padding) + extra_padding;
         y = (i / apps_per_row) * (app_icon_size + APP_TEXT_HEIGHT + app_padding) + app_padding;
 
-        draw_icon_with_label(cr, x, y, apps[i].name, apps[i].icon);
+        draw_icon_with_label(x, y, apps[i].name, apps[i].icon);
     }
+    nvgEndFrame(ui.vg);
 }
 
 int main() {
@@ -351,8 +258,11 @@ int main() {
     locus_set_touch_callback(&launcher, touch);
     process_desktop_directory();
     qsort(apps, app_count, sizeof(App), compare_apps);
+    locus_setup_ui(&ui);
     locus_run(&launcher);
 
     free(apps);
+    locus_cleanup_ui(&ui);
+    locus_cleanup(&launcher);
     return 0;
 }
